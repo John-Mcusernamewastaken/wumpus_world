@@ -76,7 +76,26 @@ class Agent:
     def act(self, _:list(Percept)) -> Action: #return an action based on a set of percepts
         pass
 class InputAgent(Agent):
-    def act(self,_:set(Percept)) -> Action:
+    def act(self, percept:set(Percept)) -> Action:
+        percept = list(percept)
+        if percept==[]:
+            print("This room is empty.\n")
+        else:
+            print("You ", end="")
+            while percept!=[]:
+                next = percept.pop()
+                match next:
+                    case Percept.STENCH:
+                        print("smell a stench", end="")
+                    case Percept.BREEZE:
+                        print("feel a breeze", end="")
+                    case Percept.GLITTER:
+                        print("see glittering dust on the floor", end="")
+                if len(percept)>1:
+                    print(", ", end="")
+                elif len(percept)==1:
+                    print(", and ", end="")
+            print(".\n")
         while True:
             res = input("Enter an action:")
             match res:
@@ -174,6 +193,7 @@ class World():
     def perceived_by_agent(self) -> set(Percept): #returns all percepts perceived at coords
         return self.perceived_at(self.agentAvatar.position)
     def shoot(self) -> bool:#returns true if a wumpus was killed, false otherwise
+        self.agentAvatar.shoot()
         target = world.agentAvatar.position.ahead()
         if target in self.percepts[Percept.WUMPUS]: #if we hit a wupus
             self.percepts[Percept.WUMPUS].remove(target) #remove the wumpus
@@ -189,72 +209,51 @@ class World():
         else:
             return False
 
-def print_game(world):
-    if GOD_MODE: #print full game state
-        for j in range(0,4):
-            for i in range(0,4):
-                print("[", end="")
-                room = list(world.perceived_at(Position((i,j), None)))
-                if world.agentAvatar.position.coords==(i,j):
-                    match world.agentAvatar.position.facing:
-                        case Facing.UP:
-                            print("↑", end="")
-                        case Facing.DOWN:
-                            print("↓", end="")
-                        case Facing.LEFT:
-                            print("←", end="")
-                        case Facing.RIGHT:
-                            print("→", end="")
-                    if(room!=[]):
-                        print(", ", end="")
-                while room!=[]:
-                    next = room.pop()
-                    match next:
-                        case Percept.WUMPUS:
-                            print("🐉", end="")
-                        case Percept.STENCH:
-                            print("👃", end="")
-                        case Percept.PIT:
-                            print("●", end="")
-                        case Percept.BREEZE:
-                            print("〰", end="")
-                        case Percept.GLITTER:
-                            print("💰", end="")
-                    if room!=[]:
-                        print(", ", end="")
-                print("]", end="")
-            print("\n")
-        print("\n")
-    else: #print agent senses
-        room = list(world.perceived_by_agent())
-        if room==[]:
-            print("This room is empty.\n")
-        else:
-            print("You ", end="")
+def print_world(world):
+    for j in range(0,4):
+        for i in range(0,4):
+            print("[", end="")
+            room = list(world.perceived_at(Position((i,j), None)))
+            if world.agentAvatar.position.coords==(i,j):
+                match world.agentAvatar.position.facing:
+                    case Facing.UP:
+                        print("↑", end="")
+                    case Facing.DOWN:
+                        print("↓", end="")
+                    case Facing.LEFT:
+                        print("←", end="")
+                    case Facing.RIGHT:
+                        print("→", end="")
+                if(room!=[]):
+                    print(", ", end="")
             while room!=[]:
                 next = room.pop()
                 match next:
+                    case Percept.WUMPUS:
+                        print("🐉", end="")
                     case Percept.STENCH:
-                        print("smell a stench", end="")
+                        print("👃", end="")
+                    case Percept.PIT:
+                        print("●", end="")
                     case Percept.BREEZE:
-                        print("feel a breeze", end="")
+                        print("〰", end="")
                     case Percept.GLITTER:
-                        print("see glittering dust on the floor", end="")
-                if len(room)>1:
+                        print("💰", end="")
+                if room!=[]:
                     print(", ", end="")
-                elif len(room)==1:
-                    print(", and ", end="")
-            print(".\n")
+            print("]", end="")
+        print("\n")
+    print("\n")
 
 agent = InputAgent()
 world = World()
 percept = world.perceived_by_agent()
 GOD_MODE = False
-print_game(world)    
+if(GOD_MODE):
+    print_world(world)    
 while(True):
     action = agent.act(percept) #prompt the agent
     print("The agent decided to ", end="")
-
     percept = set()
     match action:  #update the agent, world, and percept according to the action
         case Action.MOVE:
@@ -279,7 +278,7 @@ while(True):
             else:
                 print("shoot, but missed...")
         case Action.DIG:
-            if world.dig(agent.position): #if treasure was found
+            if world.dig(): #if treasure was found
                 print("dig, and found treasure!")
             else:
                 print("dig, but found nothing...")
@@ -288,21 +287,22 @@ while(True):
         print("\nAnd was eaten by the wumpus...")
         agent.modify_score(-1000) #for dying
         if GOD_MODE:
-            print_game(world)
+            print_world(world)
         break
     elif(Percept.PIT in percept):
         print("\nAnd fell into a pit...")
         agent.modify_score(-1000) #for dying
         if GOD_MODE:
-            print_game(world)
+            print_world(world)
         break
     else:
         if world.agentAvatar.position.coords==(0,3) and world.agentAvatar.treasure>0:
             print("\nAnd escaped with the treasure!")
             agent.modify_score(world.agentAvatar.treasure*1000) #+1000 for each piece of treasure collected
             if GOD_MODE:
-                print_game(world)
+                print_world(world)
             break #and end the game
         else:
-            print_game(world)
+            if(GOD_MODE):
+                print_world(world)    
 print("Score:", agent.score)
