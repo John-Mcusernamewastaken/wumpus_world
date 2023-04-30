@@ -1,7 +1,5 @@
 from __future__ import annotations
 from enum import Enum
-from time import sleep
-import random
 
 class Action(Enum):
     MOVE       = 1
@@ -71,39 +69,12 @@ class Position():
                 return Position(self.coords, Facing.DOWN)
 
 class Agent:
-    def __init__(self, position:Position) -> None:
+    def __init__(self) -> None:
         self.score = 0
-        self.position = position
-        self.treasure = 0
-        self.arrows = 0
-    def turn_left(self) -> None:
-        self.position = Position.left(self.position)
-    def turn_right(self) -> None:
-        self.position = Position.right(self.position)
-    def move(self) -> bool: #updates the coords to move the agent, returns true if the position was changed, false otherwise
-        newPosition = self.position.ahead()
-        if newPosition == None:
-            return False
-        else:
-            self.position = newPosition
-            return True
     def modify_score(self, change) -> None:
         self.score = self.score + change
-    def shoot(self) -> None:
-        if self.arrows>0:
-            self.arrows = self.arrows-1
-        else:
-            raise RuntimeError #don't do this
-    def add_treasure(self, n:int) -> None:
-        self.treasure = self.treasure+n
     def act(self, _:list(Percept)) -> Action: #return an action based on a set of percepts
         pass
-class RandomAgent(Agent):
-    def act(self, _:list(Percept)) -> None:
-        possible = list(Action)
-        if self.arrows==0:
-            possible.remove(Action.SHOOT)
-        return random.choice(possible)
 class InputAgent(Agent):
     def act(self,_:set(Percept)) -> Action:
         while True:
@@ -111,7 +82,7 @@ class InputAgent(Agent):
             match res:
                 case "move" | "m":
                     return Action.MOVE
-                case "left" | "r":
+                case "left" | "l":
                     return Action.TURN_LEFT
                 case "right" | "r":
                     return Action.TURN_RIGHT
@@ -124,10 +95,54 @@ class InputAgent(Agent):
                 case _:
                     print("invalid action")
 class PlanningAgent(Agent):
-    def act(self,_:set(Percept)) -> Action:
+    def __init__(self):
+        self.world = {
+            Percept.WUMPUS:  set(),
+            Percept.STENCH:  set(),
+            Percept.PIT:     set(),
+            Percept.BREEZE:  set(),
+            Percept.GLITTER: set()
+        }
+    def next_states(self):
+        return [
+            #move
+            #left
+            #right
+            #shoot
+            #dig
+        ]
+    def act(self, _:set(Percept)) -> Action:
+        #add current percept to world model
+        #attempt to deduce features of world based on model
+        #generate next states (?)
         raise NotImplementedError
+
 class World():
+    class AgentAvatar:
+        def __init__(self, position, treasure, arrows) -> None:
+            self.position = position
+            self.treasure = treasure
+            self.arrows = arrows
+        def turn_left(self) -> None:
+            self.position = Position.left(self.position)
+        def turn_right(self) -> None:
+            self.position = Position.right(self.position)
+        def move(self) -> bool: #updates the coords to move the agent, returns true if the position was changed, false otherwise
+            newPosition = self.position.ahead()
+            if newPosition == None:
+                return False
+            else:
+                self.position = newPosition
+                return True
+        def shoot(self) -> None:
+            if self.arrows>0:
+                self.arrows = self.arrows-1
+            else:
+                raise RuntimeError #don't do this
+        def add_treasure(self, n:int) -> None:
+            self.treasure = self.treasure+n
     def __init__(self) -> None:
+        self.agentAvatar = self.AgentAvatar(Position((0,3), Facing.RIGHT), treasure=0, arrows=1)
         self.percepts = {
             Percept.WUMPUS:  set([(0,1)]),
             Percept.STENCH:  set(),
@@ -144,40 +159,44 @@ class World():
                 target = Position(wumpus, facing).ahead()
                 if target!=None:
                     self.percepts[signal].add(target.coords) #add a signal
-    def percieved_at(self, position:Position) -> set(Percept): #returns all percepts perceived at coords
-        percievedHere = set()
+    def move(self) -> None:
+        return self.agentAvatar.move()
+    def turn_left(self) -> None:
+        return self.agentAvatar.turn_left()
+    def turn_right(self) -> None:
+        return self.agentAvatar.turn_right()
+    def perceived_at(self, position:Position) -> set(Percept):
+        perceivedHere = set()
         for (kind, coordss) in self.percepts.items(): #add all 
             if position.coords in coordss:
-                percievedHere.add(kind)
-        return percievedHere
-    def shoot(self, shooterPosition:Position) -> bool:#returns true if a wumpus was killed, false otherwise
-        target = shooterPosition.ahead()
+                perceivedHere.add(kind)
+        return perceivedHere
+    def perceived_by_agent(self) -> set(Percept): #returns all percepts perceived at coords
+        return self.perceived_at(self.agentAvatar.position)
+    def shoot(self) -> bool:#returns true if a wumpus was killed, false otherwise
+        target = world.agentAvatar.position.ahead()
         if target in self.percepts[Percept.WUMPUS]: #if we hit a wupus
             self.percepts[Percept.WUMPUS].remove(target) #remove the wumpus
             self.update_adjacent(Percept.WUMPUS, Percept.STENCH) #wumpus changed, so update stench 
             return True #we killed a wumpus
         else:
             return False #we didn't kill a wumpus
-    def dig(self, diggerPosition:Position) -> bool: #returns true if treasure was found
-        if diggerPosition.coords in self.percepts[Percept.GLITTER]:
-            self.percepts[Percept.GLITTER].remove(diggerPosition.coords) #remove the treasure
+    def dig(self) -> bool: #returns true if treasure was found
+        if world.agentAvatar.position.coords in self.percepts[Percept.GLITTER]:
+            self.percepts[Percept.GLITTER].remove(world.agentAvatar.position.coords) #remove the treasure
+            self.agentAvatar.add_treasure(1) #add to agent
             return True
         else:
             return False
 
-agent = InputAgent(Position((0,3), Facing.RIGHT))
-world = World()
-percept = world.percieved_at(agent.position)
-GOD_MODE = False
-
-def print_game(world, agent):
+def print_game(world):
     if GOD_MODE: #print full game state
         for j in range(0,4):
             for i in range(0,4):
                 print("[", end="")
-                room = list(world.percieved_at(Position((i,j), None)))
-                if agent.position.coords==(i,j):
-                    match agent.position.facing:
+                room = list(world.perceived_at(Position((i,j), None)))
+                if world.agentAvatar.position.coords==(i,j):
+                    match world.agentAvatar.position.facing:
                         case Facing.UP:
                             print("↑", end="")
                         case Facing.DOWN:
@@ -207,7 +226,7 @@ def print_game(world, agent):
             print("\n")
         print("\n")
     else: #print agent senses
-        room = list(world.percieved_at(agent.position))
+        room = list(world.perceived_by_agent())
         if room==[]:
             print("This room is empty.\n")
         else:
@@ -227,8 +246,11 @@ def print_game(world, agent):
                     print(", and ", end="")
             print(".\n")
 
-
-print_game(world, agent)    
+agent = InputAgent()
+world = World()
+percept = world.perceived_by_agent()
+GOD_MODE = False
+print_game(world)    
 while(True):
     action = agent.act(percept) #prompt the agent
     print("The agent decided to ", end="")
@@ -238,52 +260,49 @@ while(True):
         case Action.MOVE:
             print("move", end="")
             agent.modify_score(-1) #for moving
-            if not agent.move(): #if the agent bumped
+            if not world.move(): #if the agent bumped
                 percept.add(Percept.BUMP)
                 print(", and bumped into a wall.")
             else:
                 print(".")
         case Action.TURN_LEFT:
-            agent.turn_left()
+            world.turn_left()
             print("turn left.")
         case Action.TURN_RIGHT:
-            agent.turn_right()
+            world.turn_right()
             print("turn right.")
         case Action.SHOOT:
             agent.modify_score(-10) #for using an arrow
-            agent.shoot()
-            if world.shoot(agent.position):
+            if world.shoot():
                 percept.add(Percept.SCREAM) #if a wumpus was killed, it screams, add to percept
                 print("shoot, and killed the wumpus!")
             else:
                 print("shoot, but missed...")
         case Action.DIG:
             if world.dig(agent.position): #if treasure was found
-                agent.add_treasure(1)
                 print("dig, and found treasure!")
             else:
                 print("dig, but found nothing...")
-    percept.update(world.percieved_at(agent.position)) #add all percepts from current room
+    percept.update(world.perceived_by_agent()) #add all percepts from current room
     if (Percept.WUMPUS in percept):
         print("\nAnd was eaten by the wumpus...")
         agent.modify_score(-1000) #for dying
         if GOD_MODE:
-            print_game(world, agent)
+            print_game(world)
         break
     elif(Percept.PIT in percept):
         print("\nAnd fell into a pit...")
         agent.modify_score(-1000) #for dying
         if GOD_MODE:
-            print_game(world, agent)
+            print_game(world)
         break
     else:
-        if agent.position.coords==(0,3) and agent.treasure>0:
+        if world.agentAvatar.position.coords==(0,3) and world.agentAvatar.treasure>0:
             print("\nAnd escaped with the treasure!")
-            agent.modify_score(agent.treasure*1000) #+1000 for each piece of treasure collected
+            agent.modify_score(world.agentAvatar.treasure*1000) #+1000 for each piece of treasure collected
             if GOD_MODE:
-                print_game(world, agent)
+                print_game(world)
             break #and end the game
         else:
-            print_game(world, agent)
-    #sleep(2.5)
+            print_game(world)
 print("Score:", agent.score)
