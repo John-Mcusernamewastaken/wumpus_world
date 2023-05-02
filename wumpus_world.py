@@ -1,5 +1,6 @@
 from __future__ import annotations
 from enum import Enum
+from time import sleep
 
 class Action(Enum):
     MOVE       = 1
@@ -91,6 +92,10 @@ class InputAgent(Agent):
                         print("feel a breeze", end="")
                     case Percept.GLITTER:
                         print("see glittering dust on the floor", end="")
+                    case Percept.BUMP:
+                        print("feel yourself bump into a wall", end="")
+                    case Percept.SCREAM:
+                        print("hear an unearthly scream", end="")
                 if len(percept)>1:
                     print(", ", end="")
                 elif len(percept)==1:
@@ -113,31 +118,87 @@ class InputAgent(Agent):
                     print("move - move forward\nleft - turn left\nright - turn right\nshoot - shoot your arrow\ndig - dig for treasure")
                 case _:
                     print("invalid action")
-class PlanningAgent(Agent):
+class SearchAgent(Agent):
     def __init__(self):
-        self.world = {
-            Percept.WUMPUS:  set(),
-            Percept.STENCH:  set(),
-            Percept.PIT:     set(),
-            Percept.BREEZE:  set(),
-            Percept.GLITTER: set()
-        }
-    def next_states(self):
-        return [
-            #move
-            #left
-            #right
-            #shoot
-            #dig
-        ]
-    def act(self, _:set(Percept)) -> Action:
-        #add current percept to world model
-        #attempt to deduce features of world based on model
-        #generate next states (?)
-        raise NotImplementedError
-
-class World():
-    class AgentAvatar:
+        super().__init__()
+        self.prevAction = None
+        self.innerWorld = World(
+            AgentAvatar(Position((0,3), Facing.RIGHT), treasure=0, arrows=1),
+            {
+                Percept.WUMPUS:  set(),
+                Percept.STENCH:  set(),
+                Percept.PIT:     set(),
+                Percept.BREEZE:  set(),
+                Percept.GLITTER: set()
+            }
+        )
+        self.explored = set()
+    def act(self, percepts:set(Percept)) -> Action:
+        def search(isGoal:function) -> Action:
+            def next_states(state) -> list(Position):
+                _, position = state
+                states = [(Action.TURN_LEFT, position.left()), (Action.TURN_RIGHT, position.right())]
+                ahead = position.ahead()
+                if ahead!=None:
+                    states.append((Action.MOVE, ahead))
+                return states
+            def backtrack(state):
+                head = state
+                while prev[head] in prev:
+                    head = prev[head]
+                return head
+            agenda = [(None,self.innerWorld.agentAvatar.position)]
+            prev = dict()
+            while(True):
+                head = agenda.pop(0) #bfs
+                for state in next_states(head):
+                    agenda.append(state)
+                    prev[state] = head
+                _, result = head
+                x,y = result.coords
+                if isGoal(x,y):
+                    transform, _ = backtrack(state)
+                    return transform
+        if self.prevAction==Action.TURN_LEFT:
+            self.innerWorld.agentAvatar.turn_left()
+        elif self.prevAction==Action.TURN_RIGHT:
+            self.innerWorld.agentAvatar.turn_left()
+        elif (self.prevAction==Action.MOVE) and (Percept.BUMP not in percepts):
+            self.innerWorld.agentAvatar.move()
+        if self.innerWorld.agentAvatar.treasure>0:
+            self.prevAction = search(lambda x,y: x==0 and y==3) #return to exit
+            return self.prevAction
+        else:
+            self.explored.add(self.innerWorld.agentAvatar.position.coords)
+            if Percept.GLITTER in percepts: #dig treasure if possible
+                self.prevAction = Action.DIG
+                return self.prevAction
+            else:
+                #update model with percepts
+                for percept in percepts:
+                    if (percept==Percept.STENCH) or (percept==Percept.BREEZE): #danger sources
+                        self.innerWorld.percepts[percept].add(self.innerWorld.agentAvatar.position.coords)
+                self.prevAction = search(
+                    lambda x,y: (
+                        (x,y) not in self.explored and #not explored
+                        (
+                            ((x-1,y) in self.explored) or #adjacent to explored
+                            ((x+1,y) in self.explored) or
+                            ((x,y-1) in self.explored) or
+                            ((x,y+1) in self.explored)
+                        ) and
+                        ((x-1,y) not in self.innerWorld.percepts[Percept.STENCH]) and #not adjacent to a stench
+                        ((x+1,y) not in self.innerWorld.percepts[Percept.STENCH]) and
+                        ((x,y-1) not in self.innerWorld.percepts[Percept.STENCH]) and
+                        ((x,y+1) not in self.innerWorld.percepts[Percept.STENCH]) and
+                        ((x-1,y) not in self.innerWorld.percepts[Percept.BREEZE]) and #or breeze
+                        ((x+1,y) not in self.innerWorld.percepts[Percept.BREEZE]) and
+                        ((x,y-1) not in self.innerWorld.percepts[Percept.BREEZE]) and
+                        ((x,y+1) not in self.innerWorld.percepts[Percept.BREEZE])
+                    )
+                )
+                return self.prevAction
+class AgentAvatar:
         def __init__(self, position, treasure, arrows) -> None:
             self.position = position
             self.treasure = treasure
@@ -160,15 +221,10 @@ class World():
                 raise RuntimeError #don't do this
         def add_treasure(self, n:int) -> None:
             self.treasure = self.treasure+n
-    def __init__(self) -> None:
-        self.agentAvatar = self.AgentAvatar(Position((0,3), Facing.RIGHT), treasure=0, arrows=1)
-        self.percepts = {
-            Percept.WUMPUS:  set([(0,1)]),
-            Percept.STENCH:  set(),
-            Percept.PIT:     set([(3,0), (2,1), (2,3)]),
-            Percept.BREEZE:  set(),
-            Percept.GLITTER: set([(1,1)])
-        }
+class World():
+    def __init__(self, agentAvatar, percepts) -> None:
+        self.agentAvatar = agentAvatar
+        self.percepts = percepts
         self.update_adjacent(Percept.WUMPUS, Percept.STENCH)
         self.update_adjacent(Percept.PIT, Percept.BREEZE)
     def update_adjacent(self, source:Percept, signal:Percept) -> None: #updates the world, adding a signal to all rooms adjacent to a source
@@ -178,7 +234,7 @@ class World():
                 target = Position(wumpus, facing).ahead()
                 if target!=None:
                     self.percepts[signal].add(target.coords) #add a signal
-    def move(self) -> None:
+    def move(self) -> bool:
         return self.agentAvatar.move()
     def turn_left(self) -> None:
         return self.agentAvatar.turn_left()
@@ -194,7 +250,7 @@ class World():
         return self.perceived_at(self.agentAvatar.position)
     def shoot(self) -> bool:#returns true if a wumpus was killed, false otherwise
         self.agentAvatar.shoot()
-        target = world.agentAvatar.position.ahead()
+        target = world.agentAvatar.position.ahead().coords
         if target in self.percepts[Percept.WUMPUS]: #if we hit a wupus
             self.percepts[Percept.WUMPUS].remove(target) #remove the wumpus
             self.update_adjacent(Percept.WUMPUS, Percept.STENCH) #wumpus changed, so update stench 
@@ -245,13 +301,23 @@ def print_world(world):
         print("\n")
     print("\n")
 
-agent = InputAgent()
-world = World()
+agent = SearchAgent()
+world = World(
+    AgentAvatar(Position((0,3), Facing.RIGHT), treasure=0, arrows=1),
+    {
+        Percept.WUMPUS:  set([(0,1)]),
+        Percept.STENCH:  set(),
+        Percept.PIT:     set([(3,0), (2,1), (2,3)]),
+        Percept.BREEZE:  set(),
+        Percept.GLITTER: set([(1,1)])
+    }
+)
 percept = world.perceived_by_agent()
-GOD_MODE = False
+GOD_MODE = True
 if(GOD_MODE):
     print_world(world)    
 while(True):
+    sleep(1.5)
     action = agent.act(percept) #prompt the agent
     print("The agent decided to ", end="")
     percept = set()
@@ -282,6 +348,8 @@ while(True):
                 print("dig, and found treasure!")
             else:
                 print("dig, but found nothing...")
+        case None:
+            raise RuntimeError
     percept.update(world.perceived_by_agent()) #add all percepts from current room
     if (Percept.WUMPUS in percept):
         print("\nAnd was eaten by the wumpus...")
@@ -304,5 +372,5 @@ while(True):
             break #and end the game
         else:
             if(GOD_MODE):
-                print_world(world)    
+                print_world(world)
 print("Score:", agent.score)
