@@ -1,6 +1,5 @@
 from __future__ import annotations
 from enum import Enum
-from time import sleep
 
 class Action(Enum):
     MOVE       = 1
@@ -8,6 +7,7 @@ class Action(Enum):
     TURN_RIGHT = 3
     SHOOT      = 4
     DIG        = 5
+    PASS       = 6
 class Facing(Enum):
     UP    = 1
     DOWN  = 2
@@ -121,6 +121,7 @@ class InputAgent(Agent):
 class SearchAgent(Agent):
     def __init__(self):
         super().__init__()
+        self.actionQueue = []
         self.prevAction = None
         self.innerWorld = World(
             AgentAvatar(Position((0,3), Facing.RIGHT), treasure=0, arrows=1),
@@ -132,71 +133,84 @@ class SearchAgent(Agent):
                 Percept.GLITTER: set()
             }
         )
+        self.safe = set()
         self.explored = set()
     def act(self, percepts:set(Percept)) -> Action:
         def search(isGoal:function) -> Action:
             def next_states(state) -> list(Position):
-                _, position = state
-                states = [(Action.TURN_LEFT, position.left()), (Action.TURN_RIGHT, position.right())]
+                _, position, len, visited = state
+                states = [(Action.TURN_LEFT, position.left(), len+1, visited), (Action.TURN_RIGHT, position.right(), len+1, visited)]
                 ahead = position.ahead()
                 if ahead!=None:
-                    states.append((Action.MOVE, ahead))
+                    x,y = ahead.coords
+                    if ((x,y) not in visited) and ((x,y) in self.safe): #paths cannot cycle or explore unsafe tiles
+                        newVisited = visited + ((x,y),)
+                        states.append((Action.MOVE, ahead, len+1, newVisited))
                 return states
             def backtrack(state):
                 head = state
                 while prev[head] in prev:
                     head = prev[head]
                 return head
-            agenda = [(None,self.innerWorld.agentAvatar.position)]
+            agenda = [(None, self.innerWorld.agentAvatar.position, 1, ())]
+            dist = dict()
             prev = dict()
             while(True):
-                head = agenda.pop(0) #bfs
-                for state in next_states(head):
-                    agenda.append(state)
-                    prev[state] = head
-                _, result = head
-                x,y = result.coords
+                agenda.sort(key=(lambda x: x[2])) #uniform cost search
+                head = agenda.pop(0)
+                keyH = (head[0],head[1])
+                x,y = head[1].coords
                 if isGoal(x,y):
-                    transform, _ = backtrack(state)
-                    return transform
+                    return backtrack(keyH)[0]
+                for state in next_states(head):
+                    keyS = (state[0],state[1])
+                    if (keyS not in dist) or (dist[keyS]>state[2]): #if this is new best
+                        agenda.append(state)
+                        dist[keyS] = state[2]
+                        prev[keyS] = keyH
+        #update mental position according to real movement
         if self.prevAction==Action.TURN_LEFT:
             self.innerWorld.agentAvatar.turn_left()
         elif self.prevAction==Action.TURN_RIGHT:
-            self.innerWorld.agentAvatar.turn_left()
+            self.innerWorld.agentAvatar.turn_right()
         elif (self.prevAction==Action.MOVE) and (Percept.BUMP not in percepts):
             self.innerWorld.agentAvatar.move()
-        if self.innerWorld.agentAvatar.treasure>0:
-            self.prevAction = search(lambda x,y: x==0 and y==3) #return to exit
+        
+        if self.innerWorld.agentAvatar.treasure>0: #we have the treasure, so return to exit
+            self.actionQueue.append(search(lambda x,y: x==0 and y==3))
+            self.prevAction = self.actionQueue.pop() 
             return self.prevAction
-        else:
+        else: #search for treasure
             self.explored.add(self.innerWorld.agentAvatar.position.coords)
+            self.safe.add(self.innerWorld.agentAvatar.position.coords)
             if Percept.GLITTER in percepts: #dig treasure if possible
                 self.prevAction = Action.DIG
+                self.innerWorld.agentAvatar.add_treasure(1)
                 return self.prevAction
             else:
                 #update model with percepts
                 for percept in percepts:
                     if (percept==Percept.STENCH) or (percept==Percept.BREEZE): #danger sources
                         self.innerWorld.percepts[percept].add(self.innerWorld.agentAvatar.position.coords)
-                self.prevAction = search(
-                    lambda x,y: (
-                        (x,y) not in self.explored and #not explored
+                #deduce safe tiles
+                for y in range(0,4):
+                    for x in range(0,4):
+                        if (
                         (
-                            ((x-1,y) in self.explored) or #adjacent to explored
-                            ((x+1,y) in self.explored) or
-                            ((x,y-1) in self.explored) or
-                            ((x,y+1) in self.explored)
+                            ((x-1,y) in self.explored and (x-1,y) not in self.innerWorld.percepts[Percept.STENCH]) or #adjacent without stench (no wumpus)
+                            ((x+1,y) in self.explored and (x+1,y) not in self.innerWorld.percepts[Percept.STENCH]) or
+                            ((x,y-1) in self.explored and (x,y-1) not in self.innerWorld.percepts[Percept.STENCH]) or
+                            ((x,y+1) in self.explored and (x,y+1) not in self.innerWorld.percepts[Percept.STENCH])
                         ) and
-                        ((x-1,y) not in self.innerWorld.percepts[Percept.STENCH]) and #not adjacent to a stench
-                        ((x+1,y) not in self.innerWorld.percepts[Percept.STENCH]) and
-                        ((x,y-1) not in self.innerWorld.percepts[Percept.STENCH]) and
-                        ((x,y+1) not in self.innerWorld.percepts[Percept.STENCH]) and
-                        ((x-1,y) not in self.innerWorld.percepts[Percept.BREEZE]) and #or breeze
-                        ((x+1,y) not in self.innerWorld.percepts[Percept.BREEZE]) and
-                        ((x,y-1) not in self.innerWorld.percepts[Percept.BREEZE]) and
-                        ((x,y+1) not in self.innerWorld.percepts[Percept.BREEZE])
-                    )
-                )
+                        (
+                            ((x-1,y) in self.explored and (x-1,y) not in self.innerWorld.percepts[Percept.BREEZE]) or #adjacent without breeze (no pit)
+                            ((x+1,y) in self.explored and (x+1,y) not in self.innerWorld.percepts[Percept.BREEZE]) or
+                            ((x,y-1) in self.explored and (x,y-1) not in self.innerWorld.percepts[Percept.BREEZE]) or
+                            ((x,y+1) in self.explored and (x,y+1) not in self.innerWorld.percepts[Percept.BREEZE])
+                        )):
+                            self.safe.add((x,y))   
+                self.actionQueue.append(search(lambda x,y: (x,y) not in self.explored))
+                self.prevAction = self.actionQueue.pop()
                 return self.prevAction
 class AgentAvatar:
         def __init__(self, position, treasure, arrows) -> None:
@@ -317,7 +331,6 @@ GOD_MODE = True
 if(GOD_MODE):
     print_world(world)    
 while(True):
-    sleep(1.5)
     action = agent.act(percept) #prompt the agent
     print("The agent decided to ", end="")
     percept = set()
