@@ -61,7 +61,8 @@ class SearchAgent(Agent):
         )
         self.safe = set()
         self.explored = set()
-        self.agendaKey = (lambda x: x[2]) #depth
+        
+        self.agendaKey = (lambda x: x[2] if self.innerWorld.agentAvatar.treasure==0 else abs(x[1].coords[0]-startPosition.coords[0]) + abs(x[1].coords[1]-startPosition.coords[1])) #search depth, then manhattan distance to exit
     def act(self, percepts:set[Percept]) -> Action:
         def search(self, isGoal:function, maxDepth:int) -> Action: #attempt to reach a room that fulfills a predicate isGoal, while only visiting safe rooms
             def next_states(state) -> list(Position):
@@ -188,6 +189,6 @@ class SearchAgent(Agent):
                         else:
                             return Action.PASS #unsolvable, give up
 class LuckySearchAgent(SearchAgent): #uses manhattan distance from treasure to "lucky guess" paths
-    def __init__(self, name, searchDepth, treasureCoords:tuple[int,int], exitPosition=Position((0, 3), Facing.UP)):
-        super().__init__(name, searchDepth, exitPosition)
-        self.agendaKey = (lambda x: abs(x[1].coords[0]-treasureCoords[0]) + abs(x[1].coords[1]-treasureCoords[1])) #manhattan distance to treasure
+    def __init__(self, name, searchDepth, treasureCoords:tuple[int,int], startPosition=Position((0, 3), Facing.UP)):
+        super().__init__(name, searchDepth, startPosition)
+        self.agendaKey = (lambda x: abs(x[1].coords[0]-treasureCoords[0]) + abs(x[1].coords[1]-treasureCoords[1]) if self.innerWorld.agentAvatar.treasure==0 else abs(x[1].coords[0]-startPosition.coords[0]) + abs(x[1].coords[1]-startPosition.coords[1])) #manhattan distance to treasure, then manhattan distance to exit
