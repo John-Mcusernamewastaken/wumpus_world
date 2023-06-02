@@ -3,6 +3,47 @@ from wumpus_agent import LuckySearchAgent
 import random
 from copy import copy
 
+def print_world(world):
+        for j in range(0,4):
+            for i in range(0,4):
+                print("[", end="")
+                if world.agentAvatar.position.coords==(i,j):
+                    match world.agentAvatar.position.facing:
+                        case Facing.UP:
+                            print("↑", end="")
+                        case Facing.DOWN:
+                            print("↓", end="")
+                        case Facing.LEFT:
+                            print("←", end="")
+                        case Facing.RIGHT:
+                            print("→", end="")
+                else:
+                    print ("_", end="")
+                room = list(world.perceived_at(Position((i,j), None)))
+                if Percept.WUMPUS in room:
+                    print("W", end="")
+                else:
+                    print ("_", end="")
+                if Percept.STENCH in room:
+                    print("S", end="")
+                else:
+                    print ("_", end="")
+                if Percept.PIT in room:
+                    print("P", end="")
+                else:
+                    print ("_", end="")
+                if Percept.BREEZE in room:
+                    print("B", end="")
+                else:
+                    print ("_", end="")
+                if Percept.GLITTER in room:
+                    print("G", end="")
+                else:
+                    print ("_", end="")
+                print("]", end="")
+            print("\n")
+        print("\n")
+
 def generate_random_world(nPits):
     """Generates a random wumpus world with nPits pits, the world is guaranteed to be solvable."""
     def _generate_random_world(nPits:int, dFeasible:list[tuple[int,int]], gFeasible:list[tuple[int,int]], world:World=None) -> World | None: #helper function
@@ -15,7 +56,7 @@ def generate_random_world(nPits):
             def solvable(world:World) -> bool:
                 """Returns True if world is solvable, and False if it is not."""
                 worldCopy = world.deepcopy()
-                agent = LuckySearchAgent(None, 25, random.choice(list(worldCopy.percepts[Percept.GLITTER])), worldCopy.agentAvatar.position.deepcopy())
+                agent = LuckySearchAgent(None, 10, random.choice(list(worldCopy.percepts[Percept.GLITTER])), worldCopy.agentAvatar.position.deepcopy())
                 percept = worldCopy.perceived_by_agent()
                 while Percept.GLITTER not in percept:
                     if Percept.WUMPUS in percept or Percept.PIT in percept: #TODO remove
@@ -130,25 +171,24 @@ def generate_random_world(nPits):
             return None
         else:
             if len(world.percepts[Percept.GLITTER])<1: #place treasure until we have 1
-                for coords in dFeasible:
-                    dFeasible.remove(coords)
-                    gFeasible.remove(coords)
+                while gFeasible!=[]: #try every coordinate
+                    coords = gFeasible.pop()
+                    if coords in dFeasible:
+                        dFeasible.remove(coords)
                     succ = _generate_random_world(nPits, dFeasible.copy(), gFeasible.copy(), placeA(world, Percept.GLITTER, coords))
                     if succ is not None: #iff generation succeeded, halt
-                        return succ 
+                        return succ
                 return None #generation has failed
             elif len(world.percepts[Percept.WUMPUS])<1: #place wumpus until we have 1
-                for coords in dFeasible:
-                    dFeasible.remove(coords)
-                    gFeasible.remove(coords)
+                while dFeasible!=[]: #try every coordinate
+                    coords = dFeasible.pop()
                     succ = _generate_random_world(nPits, dFeasible.copy(), gFeasible.copy(), placeA(world, Percept.WUMPUS, coords))
                     if succ is not None: #iff generation succeeded, halt
                         return succ
                 return None #generation has failed
             elif len(world.percepts[Percept.PIT])<nPits: #place pits until we have nPits
-                for coords in dFeasible: #try every coordinate
-                    dFeasible.remove(coords)
-                    gFeasible.remove(coords)
+                while dFeasible!=[]: #try every coordinate
+                    coords = dFeasible.pop()
                     succ = _generate_random_world(nPits, dFeasible.copy(), gFeasible.copy(), placeA(world, Percept.PIT, coords))
                     if succ is not None: #iff generation succeeded, halt
                         return succ

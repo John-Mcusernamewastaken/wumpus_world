@@ -122,7 +122,7 @@ def test_agent(agent:Agent, world:World, printOut:bool=True, godMode:bool=False,
                     print_world(world)
         if turnLimit is not None:
             turnLimit = turnLimit-1 #decrement t
-        sleep(.5)
+        #sleep(.5)
     if turnLimit is not None and turnLimit==0:
         print("\nAgent starved...")
         agent.modify_score(-1000) #for dying
@@ -139,9 +139,9 @@ CANONICAL_WORLD1 = World(
     }
 )
 
-TEST_AGENTS = True
+TEST_AGENTS = False
 TEST_WORLDGEN = True
-ITERATIONS = 1
+ITERATIONS = 9999
 
 match TEST_AGENTS, TEST_WORLDGEN:
     case False, False:
@@ -150,7 +150,7 @@ match TEST_AGENTS, TEST_WORLDGEN:
         for _ in range(0, ITERATIONS):
             randomWorld = generate_random_world(3)
             if randomWorld is None:
-                print("Failed to generate world.")
+                raise RuntimeError
             else:
                 print_world(randomWorld)
     case True, False:
@@ -186,7 +186,7 @@ match TEST_AGENTS, TEST_WORLDGEN:
         for _ in range(0, ITERATIONS):
             randomWorld = generate_random_world(random.randint(0,6))
             if randomWorld is None:
-                print("Failed to generate world.")
+                raise RuntimeError
             else:
                 AGENTS = [
                     SearchAgent(
@@ -213,6 +213,6 @@ match TEST_AGENTS, TEST_WORLDGEN:
                     )
                     end = time.perf_counter()
                     agent.time = (end-start)
-                    sleep(2.5)
+                    #sleep(2.5)
                 for agent in AGENTS:
                     print(agent.toString(), f"In {agent.time:0.6f}s.")
