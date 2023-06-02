@@ -1,3 +1,6 @@
-1̶.̶ ̶I̶m̶p̶l̶e̶m̶e̶n̶t̶ ̶L̶u̶c̶k̶y̶S̶e̶a̶r̶c̶h̶A̶g̶e̶n̶t̶.̶
-2. TEST IT!
-3. Implement
+1. Implement LuckySearchAgent. DONE!
+2. Implement WorldGen DONE!
+3. Test it! KINDA DONE?
+4. Optimise WorldGen.
+    4.1. Make LuckySearchAgent store the entire path and execute it, instead of recalculating every turn (easy).
+    4.2. Replace data structures (hard).

@@ -28,7 +28,7 @@ class Agent:
         self.name = name
     def modify_score(self, change) -> None:
         self.score = self.score + change
-    def act(self, _:list(Percept)) -> Action: #return an action based on a set of percepts
+    def act(self, _:list[Percept]) -> Action: #return an action based on a set of percepts
         pass
     def toString(self) -> str:
         return f"{self.name}('score'={self.score})"
@@ -110,8 +110,6 @@ class World():
         self.agentAvatar = agentAvatar
         self.percepts = percepts
         self.exitCoords = exitCoords
-        self.update_adjacent(Percept.WUMPUS, Percept.STENCH)
-        self.update_adjacent(Percept.PIT, Percept.BREEZE)
     def update_adjacent(self, source:Percept, signal:Percept) -> None: #updates the world, adding a signal to all rooms adjacent to a source
         self.percepts[signal] = set() #remove all existing signals
         for percept in self.percepts[source]: #for every source
@@ -125,13 +123,13 @@ class World():
         return self.agentAvatar.turn_left()
     def turn_right(self) -> None:
         return self.agentAvatar.turn_right()
-    def perceived_at(self, position:Position) -> set(Percept):
+    def perceived_at(self, position:Position) -> set[Percept]:
         perceivedHere = set()
         for (kind, coordss) in self.percepts.items(): #add all 
             if position.coords in coordss:
                 perceivedHere.add(kind)
         return perceivedHere
-    def perceived_by_agent(self) -> set(Percept): #returns all percepts perceived at coords
+    def perceived_by_agent(self) -> set[Percept]: #returns all percepts perceived at coords
         return self.perceived_at(self.agentAvatar.position)
     def shoot(self) -> bool:#returns true if a wumpus was killed, false otherwise
         self.agentAvatar.shoot()

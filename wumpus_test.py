@@ -5,19 +5,7 @@ from time import sleep
 import random
 import time
 
-realWorld = World(
-    agentAvatar=AgentAvatar(Position((0,3), Facing.UP), treasure=0, arrows=1),
-    exitCoords=(0,3),
-    percepts={
-        Percept.WUMPUS:  set([(0,1)]),
-        Percept.STENCH:  set(),
-        Percept.PIT:     set([(3,0), (2,1), (2,3)]),
-        Percept.BREEZE:  set(),
-        Percept.GLITTER: set([(2,2)])
-    }
-)
-def test_agent(agent:Agent, world:World, printOut:bool=True, godMode:bool=False, turnLimit:None|int=None) -> None:
-    def print_world(world):
+def print_world(world):
         for j in range(0,4):
             for i in range(0,4):
                 print("[", end="")
@@ -57,6 +45,7 @@ def test_agent(agent:Agent, world:World, printOut:bool=True, godMode:bool=False,
                 print("]", end="")
             print("\n")
         print("\n")
+def test_agent(agent:Agent, world:World, printOut:bool=True, godMode:bool=False, turnLimit:None|int=None) -> None:
     percept = world.perceived_by_agent()
     while turnLimit is None or turnLimit>0:
         action = agent.act(percept) #prompt the agent
@@ -133,37 +122,97 @@ def test_agent(agent:Agent, world:World, printOut:bool=True, godMode:bool=False,
                     print_world(world)
         if turnLimit is not None:
             turnLimit = turnLimit-1 #decrement t
+        sleep(.5)
     if turnLimit is not None and turnLimit==0:
         print("\nAgent starved...")
         agent.modify_score(-1000) #for dying
 
-print("Search Agent:")
+CANONICAL_WORLD1 = World(
+    agentAvatar=AgentAvatar(Position((0,3), Facing.UP), treasure=0, arrows=1),
+    exitCoords=(0,3),
+    percepts={
+        Percept.WUMPUS:  set([(0,1)]),
+        Percept.STENCH:  set(),
+        Percept.PIT:     set([(3,0), (2,1), (2,3)]),
+        Percept.BREEZE:  set(),
+        Percept.GLITTER: set([(2,2)])
+    }
+)
 
-agents = [
-    SearchAgent(
-        "     SearchAgent",
-        25,
-        #random.choice(list(realWorld.percepts[Percept.GLITTER])),
-        realWorld.agentAvatar.position.deepcopy()
-    ),
-    LuckySearchAgent(
-        "LuckySearchAgent",
-        25,
-        random.choice(list(realWorld.percepts[Percept.GLITTER])),
-        realWorld.agentAvatar.position.deepcopy()
-    )
-]
+TEST_AGENTS = True
+TEST_WORLDGEN = True
+ITERATIONS = 1
 
-for agent in agents:
-    start = time.perf_counter()
-    test_agent(
-        agent,
-        realWorld.deepcopy(),
-        printOut=True,
-        godMode=True,
-        turnLimit=25
-    )
-    end = time.perf_counter()
-    agent.time = (end-start)
-for agent in agents:
-    print(agent.toString(), f"In {agent.time:0.6f}s.")
+match TEST_AGENTS, TEST_WORLDGEN:
+    case False, False:
+        pass
+    case False, True:
+        for _ in range(0, ITERATIONS):
+            randomWorld = generate_random_world(3)
+            if randomWorld is None:
+                print("Failed to generate world.")
+            else:
+                print_world(randomWorld)
+    case True, False:
+        AGENTS = [
+            SearchAgent(
+                "     SearchAgent",
+                25,
+                #random.choice(list(realWorld.percepts[Percept.GLITTER])),
+                CANONICAL_WORLD1.agentAvatar.position.deepcopy()
+            ),
+            LuckySearchAgent(
+                "LuckySearchAgent",
+                25,
+                random.choice(list(CANONICAL_WORLD1.percepts[Percept.GLITTER])),
+                CANONICAL_WORLD1.agentAvatar.position.deepcopy()
+            )
+        ]
+        for _ in range(0, ITERATIONS):
+            for agent in AGENTS:
+                start = time.perf_counter()
+                test_agent(
+                    agent,
+                    CANONICAL_WORLD1.deepcopy(),
+                    printOut=True,
+                    godMode=True,
+                    turnLimit=25
+                )
+                end = time.perf_counter()
+                agent.time = (end-start)
+            for agent in AGENTS:
+                print(agent.toString(), f"In {agent.time:0.6f}s.")
+    case True, True:
+        for _ in range(0, ITERATIONS):
+            randomWorld = generate_random_world(random.randint(0,6))
+            if randomWorld is None:
+                print("Failed to generate world.")
+            else:
+                AGENTS = [
+                    SearchAgent(
+                        "     SearchAgent",
+                        25,
+                        #random.choice(list(realWorld.percepts[Percept.GLITTER])),
+                        randomWorld.agentAvatar.position.deepcopy()
+                    ),
+                    LuckySearchAgent(
+                        "LuckySearchAgent",
+                        25,
+                        random.choice(list(randomWorld.percepts[Percept.GLITTER])),
+                        randomWorld.agentAvatar.position.deepcopy()
+                    )
+                ]
+                for agent in AGENTS:
+                    start = time.perf_counter()
+                    test_agent(
+                        agent,
+                        randomWorld.deepcopy(),
+                        printOut=True,
+                        godMode=True,
+                        turnLimit=25
+                    )
+                    end = time.perf_counter()
+                    agent.time = (end-start)
+                    sleep(2.5)
+                for agent in AGENTS:
+                    print(agent.toString(), f"In {agent.time:0.6f}s.")

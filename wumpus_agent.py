@@ -2,7 +2,7 @@ from __future__ import annotations
 from wumpus_world import Action, Agent, AgentAvatar, Facing, Percept, Position, World
 
 class InputAgent(Agent):
-    def act(self, percept:set(Percept)) -> Action:
+    def act(self, percept:set[Percept]) -> Action:
         percept = list(percept)
         if percept==[]:
             print("This room is empty.\n")
@@ -62,7 +62,7 @@ class SearchAgent(Agent):
         self.safe = set()
         self.explored = set()
         self.agendaKey = (lambda x: x[2]) #depth
-    def act(self, percepts:set(Percept)) -> Action:
+    def act(self, percepts:set[Percept]) -> Action:
         def search(self, isGoal:function, maxDepth:int) -> Action: #attempt to reach a room that fulfills a predicate isGoal, while only visiting safe rooms
             def next_states(state) -> list(Position):
                 _, position, len, visited, sinceMove = state
@@ -84,7 +84,7 @@ class SearchAgent(Agent):
                 while prev[head] in prev: #intentional, stop at the second-to-last action
                     head = prev[head]
                 return head
-            agenda = [(None, self.innerWorld.agentAvatar.position, 1, (), 0)] #previous action, position, depth, rooms visited, turns since move
+            agenda = [(None, self.innerWorld.agentAvatar.position, 1, (), 0)] #previous action, position, depth, visited list, turns since move
             dist = dict()
             prev = dict()
             while not agenda==[]:
@@ -94,12 +94,13 @@ class SearchAgent(Agent):
                 x,y = head[1].coords
                 if isGoal(x,y):
                     return backtrack(keyH)[0]
-                for state in next_states(head):
-                    keyS = (state[0],state[1])
-                    if state not in agenda and ((keyS not in dist) or (dist[keyS]>state[2])): #if this is new best
-                        agenda.append(state)
-                        dist[keyS] = state[2]
-                        prev[keyS] = keyH
+                else:
+                    for state in next_states(head):
+                        keyS = (state[0],state[1])
+                        if state not in agenda and ((keyS not in dist) or (dist[keyS]>state[2])): #state is not on agenda, and if there is an existing path the new path must be shorter
+                            agenda.append(state)
+                            dist[keyS] = state[2]
+                            prev[keyS] = keyH
             return None
         #update mental position according to real movement
         if self.prevAction==Action.TURN_LEFT:
@@ -187,6 +188,6 @@ class SearchAgent(Agent):
                         else:
                             return Action.PASS #unsolvable, give up
 class LuckySearchAgent(SearchAgent): #uses manhattan distance from treasure to "lucky guess" paths
-    def __init__(self, name, searchDepth, treasureCoords:tuple(int,int), exitPosition=Position((0, 3), Facing.UP)):
+    def __init__(self, name, searchDepth, treasureCoords:tuple[int,int], exitPosition=Position((0, 3), Facing.UP)):
         super().__init__(name, searchDepth, exitPosition)
         self.agendaKey = (lambda x: abs(x[1].coords[0]-treasureCoords[0]) + abs(x[1].coords[1]-treasureCoords[1])) #manhattan distance to treasure
