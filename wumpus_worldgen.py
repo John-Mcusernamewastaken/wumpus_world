@@ -4,13 +4,16 @@ import random
 from copy import copy
 
 def generate_random_world(nPits):
-    def _generate_random_world(nPits:int, dFeasible:list[tuple[int,int]], gFeasible:list[tuple[int,int]], world:World=None) -> World | None: #adds missing features to world
-        def placeA(world:World, thing:Percept, coords:tuple[int,int]) -> World | None: #attempt to place a thing in world. Returns a new world with the thing placed, or None if the placement produced an unsolvable world.
+    """Generates a random wumpus world with nPits pits, the world is guaranteed to be solvable."""
+    def _generate_random_world(nPits:int, dFeasible:list[tuple[int,int]], gFeasible:list[tuple[int,int]], world:World=None) -> World | None: #helper function
+        def placeA(world:World, thing:Percept, coords:tuple[int,int]) -> World | None:
+            """attempt to place a thing in world. Returns a new world with the thing placed, or None if the placement produced an unsolvable world."""
             def manhattanDistance(c1, c2):
                 x1,y1 = c1
                 x2,y2 = c2
                 return abs(x1-x2) + abs(y1-y2)
             def solvable(world:World) -> bool:
+                """Returns True if world is solvable, and False if it is not."""
                 worldCopy = world.deepcopy()
                 agent = LuckySearchAgent(None, 25, random.choice(list(worldCopy.percepts[Percept.GLITTER])), worldCopy.agentAvatar.position.deepcopy())
                 percept = worldCopy.perceived_by_agent()

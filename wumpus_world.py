@@ -28,7 +28,8 @@ class Agent:
         self.name = name
     def modify_score(self, change) -> None:
         self.score = self.score + change
-    def act(self, _:list[Percept]) -> Action: #return an action based on a set of percepts
+    def act(self, _:list[Percept]) -> Action:
+        """Prompt the agent, returns an action that works towards acquiring the treasure, based on the currently observed percepts."""
         pass
     def toString(self) -> str:
         return f"{self.name}('score'={self.score})"
