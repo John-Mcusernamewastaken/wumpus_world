@@ -93,8 +93,7 @@ class SearchAgent(Agent):
                 agenda.sort(key=self.agendaKey) #uniform cost search
                 head = agenda.pop(0)
                 keyH = (head[0],head[1])
-                x,y = head[1].coords
-                if isGoal(x,y):
+                if isGoal(head[1]):
                     return backtrack(keyH)
                 else:
                     for state in next_states(head):
@@ -120,7 +119,7 @@ class SearchAgent(Agent):
         else: #otherwise make a new plan
             if self.innerWorld.agentAvatar.treasure>0: #we have the treasure, so return to exit
                 self.actionQueue.extend(search(self, 
-                    isGoal=(lambda x,y: x==self.innerWorld.exitCoords[0] and y==self.innerWorld.exitCoords[1]),
+                    isGoal=(lambda position: position.coords==self.innerWorld.exitCoords),
                     maxDepth=self.searchDepth
                 ))
                 self.prevAction = self.actionQueue.pop()
@@ -137,9 +136,33 @@ class SearchAgent(Agent):
                             self.innerWorld.percepts[percept].add(self.innerWorld.agentAvatar.position.coords)
                         elif percept==Percept.SCREAM:
                             self.innerWorld.percepts[Percept.STENCH].clear() #wumpus died, clear all stench tiles
+                    #deduce wumpus tiles
+                    for x in range(0,4):
+                        for y in range(0,4):
+                            #due to unexplored with adjacent stench
+                            u = (x,y-1) in self.innerWorld.percepts[Percept.STENCH]
+                            d = (x,y+1) in self.innerWorld.percepts[Percept.STENCH]
+                            l = (x-1,y) in self.innerWorld.percepts[Percept.STENCH]
+                            r = (x+1,y) in self.innerWorld.percepts[Percept.STENCH]
+                            if (u and d and l) or (u and d and r) or (d and l and r) or (u and l and r): #there is a wumpus
+                                self.innerWorld.percepts[Percept.WUMPUS].add((x,y))
+                            elif (x,y) in self.innerWorld.percepts[Percept.STENCH]:
+                                #due to stench with adjacent explored
+                                u = (x,y-1) in self.explored
+                                d = (x,y+1) in self.explored
+                                l = (x-1,y) in self.explored
+                                r = (x+1,y) in self.explored
+                                if u and d and l:
+                                    self.innerWorld.percepts[Percept.WUMPUS].add((x+1,y))
+                                elif u and d and r:
+                                    self.innerWorld.percepts[Percept.WUMPUS].add((x-1,y))
+                                elif d and l and r:
+                                    self.innerWorld.percepts[Percept.WUMPUS].add((x,y-1))
+                                elif u and l and r:
+                                    self.innerWorld.percepts[Percept.WUMPUS].add((x,y+1))
                     #deduce safe tiles
-                    for y in range(0,4):
-                        for x in range(0,4):
+                    for x in range(0,4):
+                        for y in range(0,4):
                             if (
                             (
                                 ((x-1,y) in self.explored and (x-1,y) not in self.innerWorld.percepts[Percept.STENCH]) or #adjacent without stench (no wumpus)
@@ -155,7 +178,7 @@ class SearchAgent(Agent):
                             )):
                                 self.safe.add((x,y))
                     plan = search(self, 
-                        isGoal=(lambda x,y: (x,y) not in self.explored),
+                        isGoal=(lambda position: position.coords not in self.explored),
                         maxDepth=self.searchDepth
                     )
                     if plan is not None:
@@ -164,38 +187,17 @@ class SearchAgent(Agent):
                         return self.prevAction
                     else:
                         #try to hunt the wumpus
-                        def in_shooting_position(x,y):
-                            return ((x,y) in self.innerWorld.percepts[Percept.WUMPUS]) and ( #there's a wumpus
-                                ( #below the wumpus and facing up
-                                    self.innerWorld.agentAvatar.position.facing==Facing.UP and
-                                    self.innerWorld.agentAvatar.position.coords[0]==x and
-                                    self.innerWorld.agentAvatar.position.coords[0]==y+1
-                                ) or
-                                ( #above the wumpus and facing down
-                                    self.innerWorld.agentAvatar.position.facing==Facing.DOWN and
-                                    self.innerWorld.agentAvatar.position.coords[0]==x and
-                                    self.innerWorld.agentAvatar.position.coords[0]==y-1
-                                ) or
-                                ( #right of the wumpus and facing left
-                                    self.innerWorld.agentAvatar.position.facing==Facing.LEFT and
-                                    self.innerWorld.agentAvatar.position.coords[0]==x+1 and
-                                    self.innerWorld.agentAvatar.position.coords[0]==y
-                                ) or
-                                ( #left of the wumpus and facing right
-                                    self.innerWorld.agentAvatar.position.facing==Facing.RIGHT and
-                                    self.innerWorld.agentAvatar.position.coords[0]==x-1 and
-                                    self.innerWorld.agentAvatar.position.coords[0]==y
-                                )
-                            )
-                        if in_shooting_position(self.innerWorld.agentAvatar.position.coords[0],self.innerWorld.agentAvatar.position.coords[1]): #shoot if in position
+                        def in_shooting_position(position:Position) -> bool:
+                            return (position.ahead().coords in self.innerWorld.percepts[Percept.WUMPUS]) #there's a wumpus directly ahead
+                        if in_shooting_position(self.innerWorld.agentAvatar.position): #shoot if in position
                             self.prevAction = Action.SHOOT
                             return self.prevAction
                         else: #move to shooting position
-                            plan = search(self, 
+                            plan = search(self,
                                 isGoal=in_shooting_position,
                                 maxDepth=self.searchDepth
                             )
-                            if plan is not None:
+                            if plan is not None: #if we succeeded in creating a movement plan, execute it
                                 self.actionQueue.extend(plan)
                                 self.prevAction = self.actionQueue.pop()
                                 return self.prevAction

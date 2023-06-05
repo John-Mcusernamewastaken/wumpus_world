@@ -135,7 +135,7 @@ class World():
     def shoot(self) -> bool:#returns true if a wumpus was killed, false otherwise
         self.agentAvatar.shoot()
         target = self.agentAvatar.position.ahead().coords
-        if target in self.percepts[Percept.WUMPUS]: #if we hit a wupus
+        if (target is not None) and (target in self.percepts[Percept.WUMPUS]): #if we hit a wupus
             self.percepts[Percept.WUMPUS].remove(target) #remove the wumpus
             self.update_adjacent(Percept.WUMPUS, Percept.STENCH) #wumpus changed, so update stench 
             return True #we killed a wumpus
@@ -150,3 +150,45 @@ class World():
             return False
     def deepcopy(self) -> World:
         return World(self.agentAvatar.deepcopy(), self.exitCoords, deepcopy(self.percepts))
+    def toString(self) -> str:
+        output = ""
+        for j in range(0,4):
+            for i in range(0,4):
+                output+="["
+                if self.agentAvatar.position.coords==(i,j):
+                    match self.agentAvatar.position.facing:
+                        case Facing.UP:
+                            output+="↑"
+                        case Facing.DOWN:
+                            output+="↓"
+                        case Facing.LEFT:
+                            output+="←"
+                        case Facing.RIGHT:
+                            output+="→"
+                else:
+                    output+="_"
+                room = list(self.perceived_at(Position((i,j), None)))
+                if Percept.WUMPUS in room:
+                    output+="W"
+                else:
+                    output+="_"
+                if Percept.STENCH in room:
+                    output+="S"
+                else:
+                    output+="_"
+                if Percept.PIT in room:
+                    output+="P"
+                else:
+                    output+="_"
+                if Percept.BREEZE in room:
+                    output+="B"
+                else:
+                    output+="_"
+                if Percept.GLITTER in room:
+                    output+="G"
+                else:
+                    output+="_"
+                output+="]"
+            output+="\n"
+        output+="\n"
+        return output

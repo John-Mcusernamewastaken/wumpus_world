@@ -1,5 +1,5 @@
 from wumpus_world import Action, Agent, AgentAvatar, Facing, Percept, Position, World
-from wumpus_agent import SearchAgent, LuckySearchAgent
+from wumpus_search_agents import SearchAgent, LuckySearchAgent
 from wumpus_worldgen import generate_random_world
 import random
 import time
@@ -131,14 +131,25 @@ CANONICAL_WORLDS = [
         agentAvatar=AgentAvatar(Position((0,3), Facing.UP), treasure=0, arrows=1),
         exitCoords=(0,3),
         percepts={
+            Percept.WUMPUS:  set([(2,1)]), #the wumpus must be shot to solve this world 
+            Percept.STENCH:  set(),
+            Percept.PIT:     set([(0,1), (3,0)]),
+            Percept.BREEZE:  set(),
+            Percept.GLITTER: set([(2,0)])
+        }
+    )
+    ,World(
+        agentAvatar=AgentAvatar(Position((0,3), Facing.UP), treasure=0, arrows=1),
+        exitCoords=(0,3),
+        percepts={
             Percept.WUMPUS:  set([(0,1)]),
             Percept.STENCH:  set(),
             Percept.PIT:     set([(3,0), (2,1), (2,3)]),
             Percept.BREEZE:  set(),
             Percept.GLITTER: set([(1,1)])
         }
-    ),
-    World(
+    )
+    ,World(
         agentAvatar=AgentAvatar(Position((2,1), Facing.UP), treasure=0, arrows=1),
         exitCoords=(2,1),
         percepts={
@@ -148,7 +159,8 @@ CANONICAL_WORLDS = [
             Percept.BREEZE:  set(),
             Percept.GLITTER: set([(1,2)])
         }
-    )]
+    )
+    ]
 for world in CANONICAL_WORLDS:
     world.update_adjacent(Percept.WUMPUS, Percept.STENCH)
     world.update_adjacent(Percept.PIT, Percept.BREEZE)
@@ -172,12 +184,12 @@ match TEST_AGENTS, TEST_WORLDGEN:
             AGENTS = [
                 SearchAgent(
                     "     SearchAgent",
-                    25,
+                    10,
                     world.agentAvatar.position.deepcopy()
                 ),
                 LuckySearchAgent(
                     "LuckySearchAgent",
-                    25,
+                    10,
                     random.choice(list(world.percepts[Percept.GLITTER])),
                     world.agentAvatar.position.deepcopy()
                 )
@@ -188,8 +200,7 @@ match TEST_AGENTS, TEST_WORLDGEN:
                     agent,
                     world.deepcopy(),
                     printOut=True,
-                    godMode=True,
-                    turnLimit=25
+                    godMode=True
                 )
                 end = time.perf_counter()
                 agent.time = (end-start)

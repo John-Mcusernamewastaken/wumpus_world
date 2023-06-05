@@ -1,5 +1,5 @@
 from wumpus_world import Action, AgentAvatar, Facing, Percept, Position, World
-from wumpus_agent import LuckySearchAgent
+from wumpus_search_agents import LuckySearchAgent
 import random
 from copy import copy
 
@@ -44,7 +44,7 @@ def print_world(world):
             print("\n")
         print("\n")
 
-def generate_random_world(nPits, randomSeed=int):
+def generate_random_world(randomSeed=int):
     """Generates a random wumpus world with nPits pits, the world is guaranteed to be solvable."""
     def _generate_random_world(nPits:int, dFeasible:list[tuple[int,int]], gFeasible:list[tuple[int,int]], world:World=None) -> World | None: #helper function
         def placeA(world:World, thing:Percept, coords:tuple[int,int]) -> World | None:
@@ -196,45 +196,43 @@ def generate_random_world(nPits, randomSeed=int):
             else:
                 return world #generation is finished
     random.seed(randomSeed)
-    if nPits>12:
-        return None #no solvable world has more than 12 pits
-    else:
-        #place the agent first, this allows us to remove some rooms from the feasible region
-        exitPosition = (random.randint(0,3), random.randint(0,3))
-        world = World(
-            AgentAvatar(Position(exitPosition, random.choice(list(Facing))), 0, 1),
-            exitPosition,
-            {
-                Percept.BREEZE:  set(),
-                Percept.GLITTER: set(),
-                Percept.PIT:     set(),
-                Percept.STENCH:  set(),
-                Percept.WUMPUS:  set()
-            }
-        )
-        #init feasible region
-        dFeasible = set()
-        for i in range(0,4):
-            for j in range(0,4):
-                dFeasible.add((i,j))
-        dFeasible.remove(world.agentAvatar.position.coords) #nothing else can be in the agent's start room
-        gFeasible = dFeasible.copy()
-        #dangers cannot be cardinally adjacent to the agent's start room
-        dFeasible.discard((world.agentAvatar.position.coords[0]-1, world.agentAvatar.position.coords[1]))
-        dFeasible.discard((world.agentAvatar.position.coords[0]+1, world.agentAvatar.position.coords[1]))
-        dFeasible.discard((world.agentAvatar.position.coords[0], world.agentAvatar.position.coords[1]-1))
-        dFeasible.discard((world.agentAvatar.position.coords[0], world.agentAvatar.position.coords[1]+1))
-        #iff the agent is in a corner, dangers cannot be in the diagonally adjacent room
-        if world.agentAvatar.position.coords==(0,0): #topleft
-            dFeasible.discard((1,1))
-        elif world.agentAvatar.position.coords==(3,0): #top-right
-            dFeasible.discard((1,2))
-        elif world.agentAvatar.position.coords==(0,3): #bottom-left
-            dFeasible.discard((2,1))
-        elif world.agentAvatar.position.coords==(3,3): #bottom-right
-            dFeasible.discard((2,2))
-        dFeasible = list(dFeasible)
-        gFeasible = list(gFeasible)
-        random.shuffle(dFeasible)
-        random.shuffle(gFeasible)
-        return _generate_random_world(nPits, dFeasible, gFeasible, world)
+    nPits = random.randint(2,4)
+    #place the agent first, this allows us to remove some rooms from the feasible region
+    exitPosition = (random.randint(0,3), random.randint(0,3))
+    world = World(
+        AgentAvatar(Position(exitPosition, random.choice(list(Facing))), 0, 1),
+        exitPosition,
+        {
+            Percept.BREEZE:  set(),
+            Percept.GLITTER: set(),
+            Percept.PIT:     set(),
+            Percept.STENCH:  set(),
+            Percept.WUMPUS:  set()
+        }
+    )
+    #init feasible region
+    dFeasible = set()
+    for i in range(0,4):
+        for j in range(0,4):
+            dFeasible.add((i,j))
+    dFeasible.remove(world.agentAvatar.position.coords) #nothing else can be in the agent's start room
+    gFeasible = dFeasible.copy()
+    #dangers cannot be cardinally adjacent to the agent's start room
+    dFeasible.discard((world.agentAvatar.position.coords[0]-1, world.agentAvatar.position.coords[1]))
+    dFeasible.discard((world.agentAvatar.position.coords[0]+1, world.agentAvatar.position.coords[1]))
+    dFeasible.discard((world.agentAvatar.position.coords[0], world.agentAvatar.position.coords[1]-1))
+    dFeasible.discard((world.agentAvatar.position.coords[0], world.agentAvatar.position.coords[1]+1))
+    #iff the agent is in a corner, dangers cannot be in the diagonally adjacent room
+    if world.agentAvatar.position.coords==(0,0): #topleft
+        dFeasible.discard((1,1))
+    elif world.agentAvatar.position.coords==(3,0): #top-right
+        dFeasible.discard((1,2))
+    elif world.agentAvatar.position.coords==(0,3): #bottom-left
+        dFeasible.discard((2,1))
+    elif world.agentAvatar.position.coords==(3,3): #bottom-right
+        dFeasible.discard((2,2))
+    dFeasible = list(dFeasible)
+    gFeasible = list(gFeasible)
+    random.shuffle(dFeasible)
+    random.shuffle(gFeasible)
+    return _generate_random_world(nPits, dFeasible, gFeasible, world)
