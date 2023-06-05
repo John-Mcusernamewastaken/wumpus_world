@@ -44,7 +44,7 @@ def print_world(world):
             print("\n")
         print("\n")
 
-def generate_random_world(nPits):
+def generate_random_world(nPits, randomSeed=int):
     """Generates a random wumpus world with nPits pits, the world is guaranteed to be solvable."""
     def _generate_random_world(nPits:int, dFeasible:list[tuple[int,int]], gFeasible:list[tuple[int,int]], world:World=None) -> World | None: #helper function
         def placeA(world:World, thing:Percept, coords:tuple[int,int]) -> World | None:
@@ -195,6 +195,7 @@ def generate_random_world(nPits):
                 return None #generation has failed
             else:
                 return world #generation is finished
+    random.seed(randomSeed)
     if nPits>12:
         return None #no solvable world has more than 12 pits
     else:

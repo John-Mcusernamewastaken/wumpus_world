@@ -1,7 +1,6 @@
 from wumpus_world import Action, Agent, AgentAvatar, Facing, Percept, Position, World
 from wumpus_agent import SearchAgent, LuckySearchAgent
 from wumpus_worldgen import generate_random_world
-from time import sleep
 import random
 import time
 
@@ -127,20 +126,35 @@ def test_agent(agent:Agent, world:World, printOut:bool=True, godMode:bool=False,
         print("\nAgent starved...")
         agent.modify_score(-1000) #for dying
 
-CANONICAL_WORLD1 = World(
-    agentAvatar=AgentAvatar(Position((0,3), Facing.UP), treasure=0, arrows=1),
-    exitCoords=(0,3),
-    percepts={
-        Percept.WUMPUS:  set([(0,1)]),
-        Percept.STENCH:  set(),
-        Percept.PIT:     set([(3,0), (2,1), (2,3)]),
-        Percept.BREEZE:  set(),
-        Percept.GLITTER: set([(2,2)])
-    }
-)
+CANONICAL_WORLDS = [
+    World(
+        agentAvatar=AgentAvatar(Position((0,3), Facing.UP), treasure=0, arrows=1),
+        exitCoords=(0,3),
+        percepts={
+            Percept.WUMPUS:  set([(0,1)]),
+            Percept.STENCH:  set(),
+            Percept.PIT:     set([(3,0), (2,1), (2,3)]),
+            Percept.BREEZE:  set(),
+            Percept.GLITTER: set([(1,1)])
+        }
+    ),
+    World(
+        agentAvatar=AgentAvatar(Position((2,1), Facing.UP), treasure=0, arrows=1),
+        exitCoords=(2,1),
+        percepts={
+            Percept.WUMPUS:  set([(1,0)]),
+            Percept.STENCH:  set(),
+            Percept.PIT:     set([(0,1), (0,3), (1,3)]),
+            Percept.BREEZE:  set(),
+            Percept.GLITTER: set([(1,2)])
+        }
+    )]
+for world in CANONICAL_WORLDS:
+    world.update_adjacent(Percept.WUMPUS, Percept.STENCH)
+    world.update_adjacent(Percept.PIT, Percept.BREEZE)
 
 TEST_AGENTS = True
-TEST_WORLDGEN = True
+TEST_WORLDGEN = False
 ITERATIONS = 1
 
 match TEST_AGENTS, TEST_WORLDGEN:
@@ -154,26 +168,25 @@ match TEST_AGENTS, TEST_WORLDGEN:
             else:
                 print_world(randomWorld)
     case True, False:
-        AGENTS = [
-            SearchAgent(
-                "     SearchAgent",
-                25,
-                #random.choice(list(realWorld.percepts[Percept.GLITTER])),
-                CANONICAL_WORLD1.agentAvatar.position.deepcopy()
-            ),
-            LuckySearchAgent(
-                "LuckySearchAgent",
-                25,
-                random.choice(list(CANONICAL_WORLD1.percepts[Percept.GLITTER])),
-                CANONICAL_WORLD1.agentAvatar.position.deepcopy()
-            )
-        ]
-        for _ in range(0, ITERATIONS):
+        for world in CANONICAL_WORLDS:
+            AGENTS = [
+                SearchAgent(
+                    "     SearchAgent",
+                    25,
+                    world.agentAvatar.position.deepcopy()
+                ),
+                LuckySearchAgent(
+                    "LuckySearchAgent",
+                    25,
+                    random.choice(list(world.percepts[Percept.GLITTER])),
+                    world.agentAvatar.position.deepcopy()
+                )
+            ]
             for agent in AGENTS:
                 start = time.perf_counter()
                 test_agent(
                     agent,
-                    CANONICAL_WORLD1.deepcopy(),
+                    world.deepcopy(),
                     printOut=True,
                     godMode=True,
                     turnLimit=25

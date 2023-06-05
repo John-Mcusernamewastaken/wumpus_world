@@ -135,6 +135,8 @@ class SearchAgent(Agent):
                     for percept in percepts:
                         if (percept==Percept.STENCH) or (percept==Percept.BREEZE): #danger sources
                             self.innerWorld.percepts[percept].add(self.innerWorld.agentAvatar.position.coords)
+                        elif percept==Percept.SCREAM:
+                            self.innerWorld.percepts[Percept.STENCH].clear() #wumpus died, clear all stench tiles
                     #deduce safe tiles
                     for y in range(0,4):
                         for x in range(0,4):
@@ -163,28 +165,31 @@ class SearchAgent(Agent):
                     else:
                         #try to hunt the wumpus
                         def in_shooting_position(x,y):
-                            return (( #below the wumpus and facing up
-                                self.innerWorld.agentAvatar.position.facing==Facing.UP and
-                                self.innerWorld.agentAvatar.position.coords[0]==x and
-                                self.innerWorld.agentAvatar.position.coords[0]==y+1
-                            ) or
-                            ( #above the wumpus and facing down
-                                self.innerWorld.agentAvatar.position.facing==Facing.DOWN and
-                                self.innerWorld.agentAvatar.position.coords[0]==x and
-                                self.innerWorld.agentAvatar.position.coords[0]==y-1
-                            ) or
-                            ( #right of the wumpus and facing left
-                                self.innerWorld.agentAvatar.position.facing==Facing.LEFT and
-                                self.innerWorld.agentAvatar.position.coords[0]==x+1 and
-                                self.innerWorld.agentAvatar.position.coords[0]==y
-                            ) or
-                            ( #left of the wumpus and facing right
-                                self.innerWorld.agentAvatar.position.facing==Facing.RIGHT and
-                                self.innerWorld.agentAvatar.position.coords[0]==x-1 and
-                                self.innerWorld.agentAvatar.position.coords[0]==y
-                            ))
+                            return ((x,y) in self.innerWorld.percepts[Percept.WUMPUS]) and ( #there's a wumpus
+                                ( #below the wumpus and facing up
+                                    self.innerWorld.agentAvatar.position.facing==Facing.UP and
+                                    self.innerWorld.agentAvatar.position.coords[0]==x and
+                                    self.innerWorld.agentAvatar.position.coords[0]==y+1
+                                ) or
+                                ( #above the wumpus and facing down
+                                    self.innerWorld.agentAvatar.position.facing==Facing.DOWN and
+                                    self.innerWorld.agentAvatar.position.coords[0]==x and
+                                    self.innerWorld.agentAvatar.position.coords[0]==y-1
+                                ) or
+                                ( #right of the wumpus and facing left
+                                    self.innerWorld.agentAvatar.position.facing==Facing.LEFT and
+                                    self.innerWorld.agentAvatar.position.coords[0]==x+1 and
+                                    self.innerWorld.agentAvatar.position.coords[0]==y
+                                ) or
+                                ( #left of the wumpus and facing right
+                                    self.innerWorld.agentAvatar.position.facing==Facing.RIGHT and
+                                    self.innerWorld.agentAvatar.position.coords[0]==x-1 and
+                                    self.innerWorld.agentAvatar.position.coords[0]==y
+                                )
+                            )
                         if in_shooting_position(self.innerWorld.agentAvatar.position.coords[0],self.innerWorld.agentAvatar.position.coords[1]): #shoot if in position
-                            return Action.SHOOT
+                            self.prevAction = Action.SHOOT
+                            return self.prevAction
                         else: #move to shooting position
                             plan = search(self, 
                                 isGoal=in_shooting_position,
