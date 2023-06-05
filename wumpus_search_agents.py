@@ -103,13 +103,15 @@ class SearchAgent(Agent):
                             dist[keyS] = state[2]
                             prev[keyS] = keyH
             return None
-        #update mental position according to real movement
+        #update world according to revious actions
         if self.prevAction==Action.TURN_LEFT:
-            self.innerWorld.agentAvatar.turn_left()
+            self.innerWorld.turn_left()
         elif self.prevAction==Action.TURN_RIGHT:
-            self.innerWorld.agentAvatar.turn_right()
+            self.innerWorld.turn_right()
         elif (self.prevAction==Action.MOVE) and (Percept.BUMP not in percepts):
-            self.innerWorld.agentAvatar.move()
+            self.innerWorld.move()
+        elif self.prevAction==Action.SHOOT:
+            self.innerWorld.shoot()
         
         self.explored.add(self.innerWorld.agentAvatar.position.coords)
         self.safe.add(self.innerWorld.agentAvatar.position.coords)
@@ -185,10 +187,10 @@ class SearchAgent(Agent):
                         self.actionQueue.extend(plan)
                         self.prevAction = self.actionQueue.pop()
                         return self.prevAction
-                    else:
+                    elif self.innerWorld.agentAvatar.arrows>0:
                         #try to hunt the wumpus
                         def in_shooting_position(position:Position) -> bool:
-                            return (position.ahead().coords in self.innerWorld.percepts[Percept.WUMPUS]) #there's a wumpus directly ahead
+                            return (position.ahead() is not None and position.ahead().coords in self.innerWorld.percepts[Percept.WUMPUS]) #there's a wumpus directly ahead
                         if in_shooting_position(self.innerWorld.agentAvatar.position): #shoot if in position
                             self.prevAction = Action.SHOOT
                             return self.prevAction
@@ -197,12 +199,11 @@ class SearchAgent(Agent):
                                 isGoal=in_shooting_position,
                                 maxDepth=self.searchDepth
                             )
-                            if plan is not None: #if we succeeded in creating a movement plan, execute it
+                            if plan is not None: #if we succeeded in creating a hunting plan, execute it
                                 self.actionQueue.extend(plan)
                                 self.prevAction = self.actionQueue.pop()
                                 return self.prevAction
-                            else:
-                                return Action.PASS #unsolvable, give up
+                    return Action.PASS #unsolvable, give up
 class LuckySearchAgent(SearchAgent): #uses manhattan distance from treasure to "lucky guess" paths
     def __init__(self, name, searchDepth, treasureCoords:tuple[int,int], startPosition=Position((0, 3), Facing.UP)):
         super().__init__(name, searchDepth, startPosition)

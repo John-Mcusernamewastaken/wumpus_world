@@ -11,6 +11,14 @@
             "program": "wumpus_test.py",
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "Python: Make Wumpus Dataset",
+            "type": "python",
+            "request": "launch",
+            "program": "make_dataset.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

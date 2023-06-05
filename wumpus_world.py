@@ -99,11 +99,11 @@ class AgentAvatar:
                 return True
         def shoot(self) -> None:
             if self.arrows>0:
-                self.arrows = self.arrows-1
+                self.arrows-=1
             else:
                 raise RuntimeError #don't do this
         def add_treasure(self, n:int) -> None:
-            self.treasure = self.treasure+n
+            self.treasure+=n
         def deepcopy(self) -> AgentAvatar:
             return AgentAvatar(self.position.deepcopy(), self.treasure, self.arrows)
 class World():

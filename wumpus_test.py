@@ -180,7 +180,7 @@ match TEST_AGENTS, TEST_WORLDGEN:
             else:
                 print_world(randomWorld)
     case True, False:
-        for world in CANONICAL_WORLDS:
+        for world in CANONICAL_WORLDS: #TODO multithread
             AGENTS = [
                 SearchAgent(
                     "     SearchAgent",

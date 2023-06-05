@@ -58,23 +58,29 @@ def generate_random_world(randomSeed=int):
                 worldCopy = world.deepcopy()
                 agent = LuckySearchAgent(None, 10, random.choice(list(worldCopy.percepts[Percept.GLITTER])), worldCopy.agentAvatar.position.deepcopy())
                 percept = worldCopy.perceived_by_agent()
+                killedWumpus = False
+                bumped = False
                 while Percept.GLITTER not in percept:
                     if Percept.WUMPUS in percept or Percept.PIT in percept: #TODO remove
                         raise RuntimeError
                     match agent.act(percept):  #prompt the agent. update the agent, world, and percept according to its action
                         case Action.MOVE:
-                            worldCopy.move()
+                            bumped = not worldCopy.move()
                         case Action.TURN_LEFT:
                             worldCopy.turn_left()
                         case Action.TURN_RIGHT:
                             worldCopy.turn_right()
                         case Action.SHOOT:
-                            worldCopy.shoot()
+                            killedWumpus = worldCopy.shoot()
                         case Action.PASS:
                             return False
                         case None:
                             raise RuntimeError
                     percept = worldCopy.perceived_by_agent() #update percept
+                    if killedWumpus:
+                        percept.add(Percept.SCREAM)
+                    if bumped:
+                        percept.add(Percept.BUMP)
                 return True
             def hSolvable(world:World) -> bool|None: #returns the solvability of the world, or None if nothing can be inferred about world's solvability
                 def sectorsSolvable(world:World, start:tuple[int,int]) -> bool:
