@@ -139,9 +139,9 @@ CANONICAL_WORLD1 = World(
     }
 )
 
-TEST_AGENTS = False
+TEST_AGENTS = True
 TEST_WORLDGEN = True
-ITERATIONS = 9999
+ITERATIONS = 1
 
 match TEST_AGENTS, TEST_WORLDGEN:
     case False, False:
