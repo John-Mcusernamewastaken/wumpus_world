@@ -1,0 +1,8 @@
+Papers.
+	Attention is All You Need 																									https://arxiv.org/abs/1706.03762
+	Q-Learning Algorithms: A Comprehensive Classification and Applications														https://ieeexplore.ieee.org/document/8836506
+	AI Safety Gridworlds																										https://arxiv.org/abs/1711.09883
+	Relational-Grid-World A Novel Relational Reasoning Environment and An Agent Model for Relational Information Extraction		https://arxiv.org/abs/2007.05961
+TODO.
+	Grid/Wumpus world general stuff, might help gain insight.
+	SOTA architecture, likely needs recurrance/attention.
