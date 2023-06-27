@@ -9,7 +9,7 @@ TEST_SIZE  = 10000
 
 if not os.path.isfile(TRAIN_PATH):
     worlds = set()
-    for i in range(0, TRAIN_SIZE+1):
+    for i in range(0, TRAIN_SIZE+1): #TODO need to actually check the size, some seeds map to the same world
         print(f"{i}/{TRAIN_SIZE}")
         world = generate_random_world(i)
         worlds.add(world)
@@ -17,7 +17,7 @@ if not os.path.isfile(TRAIN_PATH):
 
 if not os.path.isfile(TEST_PATH):
     worlds = set()
-    for i in range(TRAIN_SIZE, TRAIN_SIZE+TEST_SIZE+1):
+    for i in range(TRAIN_SIZE, TRAIN_SIZE+TEST_SIZE+1): #TODO need to actually check the size, some seeds map to the same world
         print(f"{i}/{TRAIN_SIZE+TEST_SIZE}")
         world = generate_random_world(i)
         worlds.add(world)
